@@ -9,8 +9,15 @@ import pytz
 employees = {
     "FA112": "Farida Ahmed",
     "FM109": "Farida Muhammed",
-    # ممكن تزود باقي الموظفين هنا بنفس الشكل
+    # ضيف باقي الموظفين بنفس الشكل
 }
+
+# ==========================
+# دالة تنظيف الباركود
+# ==========================
+def clean_barcode(raw_code):
+    # يشيل أي رموز مش حروف أو أرقام ويحولها لـ Uppercase
+    return "".join(ch for ch in raw_code if ch.isalnum()).upper()
 
 # ==========================
 # دالة تسجيل الحضور
@@ -40,7 +47,7 @@ def log_attendance(emp_id):
 
         return f"✅ تم تسجيل الحضور للموظف: {emp_name} ({emp_id})"
     else:
-        return "❌ الباركود غير مسجل لموظف"
+        return f"❌ الكود {emp_id} غير مسجل لموظف"
 
 # ==========================
 # Streamlit UI
@@ -50,7 +57,8 @@ st.title("📌 نظام تسجيل الحضور بالباركود")
 barcode_input = st.text_input("🔍 امسح الباركود هنا:")
 
 if barcode_input:
-    result = log_attendance(barcode_input.strip())
+    emp_id = clean_barcode(barcode_input.strip())  # تنظيف الكود
+    result = log_attendance(emp_id)
     st.success(result)
 
 # عرض جدول الحضور
