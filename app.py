@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
+from io import BytesIO
 
 # ==========================
 # بيانات الموظفين والباركود
@@ -46,14 +47,13 @@ def log_attendance(raw_code):
             "time": time,
         }
 
-        # لو ملف اكسل موجود افتحه
         try:
-            df = pd.read_excel("attendance.xlsx")
+            df = pd.read_excel("attendance.xlsx", engine="openpyxl")
         except FileNotFoundError:
             df = pd.DataFrame(columns=["id", "name", "date_arabic", "time"])
 
         df = pd.concat([df, pd.DataFrame([new_record])], ignore_index=True)
-        df.to_excel("attendance.xlsx", index=False)
+        df.to_excel("attendance.xlsx", index=False, engine="openpyxl")
 
         return f"✅ تم تسجيل الحضور للموظف: {emp_name} ({emp_id})"
     else:
@@ -72,8 +72,20 @@ if barcode_input:
 
 # عرض جدول الحضور
 try:
-    df = pd.read_excel("attendance.xlsx")
+    df = pd.read_excel("attendance.xlsx", engine="openpyxl")
     st.subheader("📑 سجل الحضور")
     st.dataframe(df, use_container_width=True)
+
+    # زرار تحميل الجدول
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Attendance")
+    st.download_button(
+        label="⬇️ تحميل ملف الحضور Excel",
+        data=buffer.getvalue(),
+        file_name="attendance.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
 except FileNotFoundError:
     st.info("ℹ️ لم يتم تسجيل أي حضور بعد.")
