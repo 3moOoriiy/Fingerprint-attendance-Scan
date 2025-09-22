@@ -1,91 +1,65 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-import pytz
 from io import BytesIO
 
-# ==========================
-# بيانات الموظفين والباركود
-# ==========================
-employees = {
-    "FA112": "Farida Ahmed",
-    "FM109": "Farida Muhammed",
-}
+st.set_page_config(page_title="جدول الحضور والانصراف", layout="centered")
 
-# خريطة لربط الأرقام بالكود
-barcode_map = {
-    "112": "FA112",
-    "109": "FM109",
-}
+# تهيئة البيانات في session_state
+if "data" not in st.session_state:
+    st.session_state.data = []
 
-# ==========================
-# دالة تنظيف الباركود
-# ==========================
-def clean_barcode(raw_code):
-    # يشيل أي رموز مش أرقام
-    digits = "".join(ch for ch in raw_code if ch.isdigit())
-    return digits
+st.title("📊 جدول الحضور والانصراف")
 
-# ==========================
-# دالة تسجيل الحضور
-# ==========================
-def log_attendance(raw_code):
-    clean_code = clean_barcode(raw_code)
+# إدخال بيانات
+with st.form("data_form", clear_on_submit=True):
+    name = st.text_input("اسم الموظف")
+    col1, col2 = st.columns(2)
+    with col1:
+        time_in = st.time_input("وقت الدخول", format="hh:mm a")
+    with col2:
+        time_out = st.time_input("وقت الخروج", format="hh:mm a")
 
-    if clean_code in barcode_map:
-        emp_id = barcode_map[clean_code]
-        emp_name = employees[emp_id]
+    submitted = st.form_submit_button("إضافة")
 
-        now = datetime.now(pytz.timezone("Africa/Cairo"))
-        date_arabic = now.strftime("%Y-%m-%d")
-        time = now.strftime("%I:%M:%S %p")
+    if submitted and name:
+        st.session_state.data.append({
+            "اسم الموظف": name,
+            "وقت الدخول": time_in.strftime("%I:%M %p"),
+            "وقت الخروج": time_out.strftime("%I:%M %p")
+        })
+        st.success("✅ تم إضافة البيانات")
 
-        new_record = {
-            "id": emp_id,
-            "name": emp_name,
-            "date_arabic": date_arabic,
-            "time": time,
-        }
+# تحويل البيانات إلى DataFrame
+if st.session_state.data:
+    df = pd.DataFrame(st.session_state.data)
 
-        try:
-            df = pd.read_excel("attendance.xlsx", engine="openpyxl")
-        except FileNotFoundError:
-            df = pd.DataFrame(columns=["id", "name", "date_arabic", "time"])
-
-        df = pd.concat([df, pd.DataFrame([new_record])], ignore_index=True)
-        df.to_excel("attendance.xlsx", index=False, engine="openpyxl")
-
-        return f"✅ تم تسجيل الحضور للموظف: {emp_name} ({emp_id})"
-    else:
-        return f"❌ الكود {raw_code} غير مسجل لموظف"
-
-# ==========================
-# Streamlit UI
-# ==========================
-st.title("📌 نظام تسجيل الحضور بالباركود")
-
-barcode_input = st.text_input("🔍 امسح الباركود هنا:")
-
-if barcode_input:
-    result = log_attendance(barcode_input.strip())
-    st.success(result)
-
-# عرض جدول الحضور
-try:
-    df = pd.read_excel("attendance.xlsx", engine="openpyxl")
-    st.subheader("📑 سجل الحضور")
+    st.subheader("📌 البيانات المدخلة")
     st.dataframe(df, use_container_width=True)
 
-    # زرار تحميل الجدول
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name="Attendance")
-    st.download_button(
-        label="⬇️ تحميل ملف الحضور Excel",
-        data=buffer.getvalue(),
-        file_name="attendance.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+    # أزرار التحكم
+    colA, colB, colC = st.columns(3)
 
-except FileNotFoundError:
-    st.info("ℹ️ لم يتم تسجيل أي حضور بعد.")
+    # زر حفظ (يثبت البيانات كما هي)
+    with colA:
+        if st.button("💾 حفظ البيانات"):
+            st.success("✅ تم حفظ البيانات بنجاح (موجودة بالفعل في الجدول)")
+
+    # زر تحميل Excel
+    with colB:
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="الحضور")
+        st.download_button(
+            label="⬇️ تحميل Excel",
+            data=buffer.getvalue(),
+            file_name="attendance.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    # زر مسح البيانات
+    with colC:
+        if st.button("🗑️ مسح البيانات"):
+            st.session_state.data = []
+            st.warning("⚠️ تم مسح كل البيانات")
+else:
+    st.info("ℹ️ لم يتم إدخال أي بيانات بعد.")
