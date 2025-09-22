@@ -38,7 +38,7 @@ def log_attendance(raw_code):
 
         now = datetime.now(pytz.timezone("Africa/Cairo"))
         date_arabic = now.strftime("%Y-%m-%d")
-        time = now.strftime("%H:%M:%S")
+        time = now.strftime("%I:%M:%S %p")
 
         new_record = {
             "id": emp_id,
