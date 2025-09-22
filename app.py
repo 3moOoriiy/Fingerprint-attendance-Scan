@@ -9,22 +9,32 @@ import pytz
 employees = {
     "FA112": "Farida Ahmed",
     "FM109": "Farida Muhammed",
-    # ضيف باقي الموظفين بنفس الشكل
+}
+
+# خريطة لربط الأرقام بالكود
+barcode_map = {
+    "112": "FA112",
+    "109": "FM109",
 }
 
 # ==========================
 # دالة تنظيف الباركود
 # ==========================
 def clean_barcode(raw_code):
-    # يشيل أي رموز مش حروف أو أرقام ويحولها لـ Uppercase
-    return "".join(ch for ch in raw_code if ch.isalnum()).upper()
+    # يشيل أي رموز مش أرقام
+    digits = "".join(ch for ch in raw_code if ch.isdigit())
+    return digits
 
 # ==========================
 # دالة تسجيل الحضور
 # ==========================
-def log_attendance(emp_id):
-    if emp_id in employees:
+def log_attendance(raw_code):
+    clean_code = clean_barcode(raw_code)
+
+    if clean_code in barcode_map:
+        emp_id = barcode_map[clean_code]
         emp_name = employees[emp_id]
+
         now = datetime.now(pytz.timezone("Africa/Cairo"))
         date_arabic = now.strftime("%Y-%m-%d")
         time = now.strftime("%H:%M:%S")
@@ -47,7 +57,7 @@ def log_attendance(emp_id):
 
         return f"✅ تم تسجيل الحضور للموظف: {emp_name} ({emp_id})"
     else:
-        return f"❌ الكود {emp_id} غير مسجل لموظف"
+        return f"❌ الكود {raw_code} غير مسجل لموظف"
 
 # ==========================
 # Streamlit UI
@@ -57,8 +67,7 @@ st.title("📌 نظام تسجيل الحضور بالباركود")
 barcode_input = st.text_input("🔍 امسح الباركود هنا:")
 
 if barcode_input:
-    emp_id = clean_barcode(barcode_input.strip())  # تنظيف الكود
-    result = log_attendance(emp_id)
+    result = log_attendance(barcode_input.strip())
     st.success(result)
 
 # عرض جدول الحضور
