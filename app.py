@@ -15,11 +15,11 @@ with st.form("data_form", clear_on_submit=True):
     name = st.text_input("اسم الموظف")
     col1, col2 = st.columns(2)
     with col1:
-        time_in = st.time_input("وقت الدخول", format="hh:mm a")
+        time_in = st.time_input("وقت الدخول")
     with col2:
-        time_out = st.time_input("وقت الخروج", format="hh:mm a")
+        time_out = st.time_input("وقت الخروج")
 
-    submitted = st.form_submit_button("إضافة")
+    submitted = st.form_submit_button("➕ إضافة")
 
     if submitted and name:
         st.session_state.data.append({
