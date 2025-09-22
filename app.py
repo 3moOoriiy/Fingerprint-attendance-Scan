@@ -1,65 +1,61 @@
 import streamlit as st
 import pandas as pd
-from io import BytesIO
+from datetime import datetime
 
-st.set_page_config(page_title="جدول الحضور والانصراف", layout="centered")
+# تخزين بيانات الموظفين (ID: Name)
+employees = {
+    "FA112": "Farida Ahmed",
+    "FM109": "Farida Muhammed"
+}
 
-# تهيئة البيانات في session_state
-if "data" not in st.session_state:
-    st.session_state.data = []
+# جدول الحضور
+if "attendance" not in st.session_state:
+    st.session_state.attendance = pd.DataFrame(columns=["ID", "Name", "Date", "Time In", "Time Out"])
 
-st.title("📊 جدول الحضور والانصراف")
+st.title("📌 نظام تسجيل الحضور بالبصمة (Barcode)")
 
-# إدخال بيانات
-with st.form("data_form", clear_on_submit=True):
-    name = st.text_input("اسم الموظف")
-    col1, col2 = st.columns(2)
-    with col1:
-        time_in = st.time_input("وقت الدخول")
-    with col2:
-        time_out = st.time_input("وقت الخروج")
+# إدخال الباركود
+barcode = st.text_input("امسح الباركود هنا")
 
-    submitted = st.form_submit_button("➕ إضافة")
+# عند المسح
+if barcode:
+    current_time = datetime.now().strftime("%I:%M %p")  # 12 ساعة
+    current_date = datetime.now().strftime("%Y-%m-%d")
 
-    if submitted and name:
-        st.session_state.data.append({
-            "اسم الموظف": name,
-            "وقت الدخول": time_in.strftime("%I:%M %p"),
-            "وقت الخروج": time_out.strftime("%I:%M %p")
-        })
-        st.success("✅ تم إضافة البيانات")
+    if barcode in employees:
+        employee_name = employees[barcode]
 
-# تحويل البيانات إلى DataFrame
-if st.session_state.data:
-    df = pd.DataFrame(st.session_state.data)
+        # البحث هل الموظف سجل دخول النهارده
+        existing = st.session_state.attendance[
+            (st.session_state.attendance["ID"] == barcode) &
+            (st.session_state.attendance["Date"] == current_date)
+        ]
 
-    st.subheader("📌 البيانات المدخلة")
-    st.dataframe(df, use_container_width=True)
+        if existing.empty:
+            # تسجيل وقت دخول
+            new_row = {"ID": barcode, "Name": employee_name, "Date": current_date,
+                       "Time In": current_time, "Time Out": ""}
+            st.session_state.attendance = pd.concat([st.session_state.attendance, pd.DataFrame([new_row])], ignore_index=True)
+            st.success(f"✅ {employee_name} تم تسجيل وقت الدخول: {current_time}")
+        else:
+            # تحديث وقت الخروج
+            idx = existing.index[0]
+            st.session_state.attendance.at[idx, "Time Out"] = current_time
+            st.success(f"✅ {employee_name} تم تسجيل وقت الخروج: {current_time}")
+    else:
+        st.error("❌ الباركود غير مسجل!")
 
-    # أزرار التحكم
-    colA, colB, colC = st.columns(3)
+# عرض الجدول
+st.subheader("📊 سجل الحضور")
+st.dataframe(st.session_state.attendance)
 
-    # زر حفظ (يثبت البيانات كما هي)
-    with colA:
-        if st.button("💾 حفظ البيانات"):
-            st.success("✅ تم حفظ البيانات بنجاح (موجودة بالفعل في الجدول)")
+# زرار حفظ البيانات
+if st.button("💾 حفظ البيانات إلى Excel"):
+    file_name = f"Attendance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    st.session_state.attendance.to_excel(file_name, index=False)
+    st.success(f"✅ تم حفظ الملف باسم: {file_name}")
 
-    # زر تحميل Excel
-    with colB:
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="الحضور")
-        st.download_button(
-            label="⬇️ تحميل Excel",
-            data=buffer.getvalue(),
-            file_name="attendance.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    # زر مسح البيانات
-    with colC:
-        if st.button("🗑️ مسح البيانات"):
-            st.session_state.data = []
-            st.warning("⚠️ تم مسح كل البيانات")
-else:
-    st.info("ℹ️ لم يتم إدخال أي بيانات بعد.")
+# زرار مسح البيانات
+if st.button("🗑️ مسح كل البيانات"):
+    st.session_state.attendance = pd.DataFrame(columns=["ID", "Name", "Date", "Time In", "Time Out"])
+    st.success("✅ تم مسح كل البيانات")
