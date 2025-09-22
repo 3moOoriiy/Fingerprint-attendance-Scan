@@ -232,7 +232,6 @@ ALEXANDRIA_TZ = pytz.timezone('Africa/Cairo')
 
 def get_local_time():
     """الحصول على التوقيت المحلي للإسكندرية"""
-    # الحصول على التوقيت العالمي ثم تحويله للتوقيت المحلي
     utc_time = datetime.utcnow()
     utc_time = pytz.utc.localize(utc_time)
     local_time = utc_time.astimezone(ALEXANDRIA_TZ)
@@ -273,22 +272,14 @@ if st.session_state.selected_user:
 # قسم الباركود
 st.markdown('<div class="rtl"><h3>📱 مسح الباركود:</h3></div>', unsafe_allow_html=True)
 
-# زر الباركود
+# زر الباركود (بصمة الحضور)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    if st.button("📱 اسكان باركود", key="barcode_scan", help="اضغط لمسح الباركود"):
+    if st.button("📱 اسكان باركود (بصمة حضور)", key="barcode_scan", help="اضغط لتسجيل بصمة الحضور"):
         if not st.session_state.selected_user:
             st.error("⚠️ من فضلك اختر الشخص أولاً")
         else:
-            # بدء المسح
-            st.session_state.scanning = True
-            with st.spinner("📱 جاري مسح الباركود..."):
-                progress_bar = st.progress(0)
-                for i in range(100):
-                    time.sleep(0.02)  # محاكاة وقت المسح
-                    progress_bar.progress(i + 1)
-            
-            # تسجيل الحضور
+            # تسجيل الحضور مباشرة كبصمة
             now = get_local_time()
             entry = {
                 'name': st.session_state.selected_user,
@@ -302,13 +293,11 @@ with col2:
             st.session_state.attendance_log.insert(0, entry)
             save_attendance_data(st.session_state.attendance_log)
             
-            # إظهار رسالة نجاح مع تأثير بصري
             st.balloons()
-            st.success(f"✅ تم تسجيل حضور: {st.session_state.selected_user}")
+            st.success(f"✅ تم تسجيل بصمة: {st.session_state.selected_user}")
             st.info(f"📅 التاريخ: {entry['date_arabic']} | 🕐 الوقت: {entry['time']}")
             
             st.session_state.selected_user = None
-            st.session_state.scanning = False
             time.sleep(1)
             st.rerun()
 
@@ -318,7 +307,7 @@ st.markdown("""
     <h4>📋 طريقة الاستخدام:</h4>
     <p>1️⃣ اختر الشخص من الأزرار أعلاه</p>
     <p>2️⃣ اضغط على زر "اسكان باركود"</p>
-    <p>3️⃣ انتظر انتهاء المسح وتسجيل الحضور</p>
+    <p>3️⃣ انتظر رسالة التأكيد وسيتم تسجيل البصمة</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -326,7 +315,6 @@ st.markdown("""
 st.markdown('<div class="rtl"><h3>📋 سجل الحضور:</h3></div>', unsafe_allow_html=True)
 
 if st.session_state.attendance_log:
-    # عرض آخر 10 سجلات
     recent_logs = st.session_state.attendance_log[:10]
     
     for entry in recent_logs:
@@ -339,7 +327,6 @@ if st.session_state.attendance_log:
         </div>
         """, unsafe_allow_html=True)
     
-    # إحصائيات سريعة
     st.markdown("### 📊 الإحصائيات:")
     col1, col2, col3 = st.columns(3)
     
@@ -352,15 +339,12 @@ if st.session_state.attendance_log:
         st.metric("📅 سجلات اليوم", today_count)
     
     with col3:
-        # عدد الأشخاص الفريدين
         unique_users = len(set(entry['name'] for entry in st.session_state.attendance_log))
         st.metric("👥 الأشخاص", unique_users)
     
-    # أزرار الإدارة
     col1, col2 = st.columns(2)
     
     with col1:
-        # تحميل Excel
         if st.button("📥 تحميل Excel"):
             excel_file = create_excel_file(st.session_state.attendance_log)
             if excel_file:
@@ -374,7 +358,6 @@ if st.session_state.attendance_log:
                 st.error("لا توجد بيانات للتحميل")
     
     with col2:
-        # مسح السجل
         if st.button("🗑️ مسح السجل"):
             if st.session_state.attendance_log:
                 if st.button("⚠️ تأكيد المسح", key="confirm_delete"):
@@ -387,10 +370,8 @@ if st.session_state.attendance_log:
             else:
                 st.error("📝 السجل فارغ بالفعل")
 
-    # عرض الجدول التفصيلي
     if st.checkbox("📊 عرض الجدول التفصيلي"):
         df = pd.DataFrame(st.session_state.attendance_log)
-        # اختيار الأعمدة المناسبة
         if 'date_arabic' in df.columns:
             df_display = df[['name', 'date_arabic', 'time']].copy()
         else:
@@ -404,7 +385,7 @@ else:
     st.markdown("""
     <div class="rtl" style="text-align: center; padding: 30px; background: rgba(102, 126, 234, 0.1); border-radius: 15px; margin: 20px 0;">
         <h3>🎯 ابدأ بتسجيل أول حضور!</h3>
-        <p>اختر شخص واضغط على "اسكان باركود" لتسجيل الحضور</p>
+        <p>اختر شخص واضغط على "اسكان باركود" لتسجيل البصمة</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -414,7 +395,7 @@ with st.sidebar:
     st.info("""
     **نظام الباركود الذكي**
     
-    ✅ تسجيل الحضور بالباركود
+    ✅ تسجيل الحضور كبصمة
     
     ✅ حفظ البيانات تلقائياً
     
@@ -424,34 +405,27 @@ with st.sidebar:
     
     ✅ واجهة عربية
     
-    ✅ مسح سريع ودقيق
-    
     🕐 التوقيت: الإسكندرية
     """)
     
-    # عرض التوقيت الحالي
     current_time = get_local_time()
     st.markdown(f"**التوقيت الحالي (الإسكندرية):**")
     st.markdown(f"📅 {current_time.strftime('%d/%m/%Y')}")
     st.markdown(f"🕐 {current_time.strftime('%I:%M:%S %p')}")
     st.markdown(f"🌍 المنطقة الزمنية: {current_time.tzinfo}")
     
-    # إضافة زر تحديث الوقت
     if st.button("🔄 تحديث الوقت"):
         st.rerun()
     
-    # معلومات إضافية
     st.markdown("---")
     st.markdown("### 📱 نصائح للاستخدام")
     st.markdown("""
     💡 **للحصول على أفضل النتائج:**
     - تأكد من وضوح الباركود
-    - تجنب الضوء المباشر
     - امسك الجهاز بثبات
-    - انتظر انتهاء المسح
+    - اضغط الزر وانتظر رسالة النجاح
     """)
 
-# رسالة ترحيب للمستخدمين الجدد
 if not st.session_state.attendance_log and 'welcome_shown' not in st.session_state:
     st.balloons()
     st.success("🎉 مرحباً بك في نظام الباركود!")
